@@ -597,10 +597,10 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       #else
       graphics_context_set_text_color(ctx, GColorWhite);
       #endif
-      graphics_draw_text(ctx, "LAST TURN!", f_sm,
-        GRect(0, card_y, w, 16),
+      graphics_draw_text(ctx, "LAST TURN!", f_md,
+        GRect(0, card_y, w, 22),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-      card_y += 16;
+      card_y += 22;
     }
 
     // Centered grid: [C0][C1] buf [Pile] / [C2][C3] buf [Cascade]
@@ -773,9 +773,10 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     for(int i = 0; i < s_num_players; i++) {
       int pi = s_order[i];
       bool win = (scores[pi] == lo);
-      draw_token(ctx, pad+12, ly + rh/2, s_players[pi].icon, false);
+      int lx = PBL_IF_ROUND_ELSE(pad + 26, pad + 12);
+      draw_token(ctx, lx, ly + rh/2, s_players[pi].icon, false);
       // Draw 4 mini cards
-      int mcx = pad + 28;
+      int mcx = lx + 16;
       for(int j = 0; j < HAND_SIZE; j++) {
         draw_mini_card(ctx, mcx + j*22, ly+2, s_players[pi].hand[j], true);
       }
