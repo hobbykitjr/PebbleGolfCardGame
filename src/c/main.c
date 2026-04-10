@@ -458,35 +458,44 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
-  // ======== ORDER ========
+  // ======== ORDER (icon grid, no numbers) ========
   else if(s_state == ST_ORDER) {
     graphics_context_set_text_color(ctx, GColorWhite);
-    graphics_draw_text(ctx, "Player Order", f_md,
-      GRect(0, h*8/100, w, 24),
+    int title_y = PBL_IF_ROUND_ELSE(pad + 8, pad + 2);
+    graphics_draw_text(ctx, "Players", f_lg,
+      GRect(0, title_y, w, 34),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-    int gy = h * 22 / 100, row_h = 26;
-    int cols = (s_num_players <= 3) ? 1 : 2;
-    int per_col = (s_num_players + cols - 1) / cols;
+    // 2-column icon grid, big icons
+    int cols = 2;
+    int rows = (s_num_players + 1) / 2;
+    int cell_w = (w - pad * 2) / cols;
+    int cell_h = 50;
+    int grid_h = rows * cell_h;
+    int grid_y = title_y + 36;
+    // Center grid vertically in available space
+    int avail = h - grid_y - 50;
+    if(grid_h < avail) grid_y += (avail - grid_h) / 2;
+
     for(int i = 0; i < s_num_players; i++) {
       int pi = s_order[i];
-      int c = i / per_col, r = i % per_col;
-      int col_w = w / cols;
-      int tx = c * col_w + (cols == 1 ? w/2 - 30 : col_w/2 - 20);
-      int ty = gy + r * row_h;
-      char lbl[8]; snprintf(lbl, sizeof(lbl), "%d.", i + 1);
-      graphics_context_set_text_color(ctx, GColorWhite);
-      graphics_draw_text(ctx, lbl, f_sm, GRect(tx-14, ty+4, 18, 18),
-        GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
-      draw_token(ctx, tx+14, ty+12, s_players[pi].icon, false);
+      int col = i % cols, row = i / cols;
+      int cx = pad + col * cell_w + cell_w / 2;
+      int cy = grid_y + row * cell_h + 18;
+      draw_token(ctx, cx, cy, s_players[pi].icon, true);
       graphics_context_set_text_color(ctx, GColorWhite);
       graphics_draw_text(ctx, s_tok_name[s_players[pi].icon], f_sm,
-        GRect(tx+28, ty+4, col_w/2+20, 18),
-        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+        GRect(cx - cell_w/2, cy + 16, cell_w, 16),
+        GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
     }
+
+    graphics_context_set_text_color(ctx, GColorLightGray);
+    graphics_draw_text(ctx, "Everyone choose a symbol", f_sm,
+      GRect(0, h - PBL_IF_ROUND_ELSE(42, 34), w, 16),
+      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
     graphics_context_set_text_color(ctx, GColorWhite);
     graphics_draw_text(ctx, "SELECT to deal", f_sm,
-      GRect(0, h*80/100, w, 16),
+      GRect(0, h - PBL_IF_ROUND_ELSE(26, 18), w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
@@ -536,7 +545,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
   else if(s_state == ST_REVEAL) {
     int cp = cur_player();
     Player *p = &s_players[cp];
-    int icon_y = PBL_IF_ROUND_ELSE(22, 10);
+    int icon_y = PBL_IF_ROUND_ELSE(32, 12);
     draw_token(ctx, w/2, icon_y, s_players[cp].icon, true);
 
     #ifdef PBL_COLOR
@@ -572,10 +581,10 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    int icon_y = PBL_IF_ROUND_ELSE(20, 8);
+    int icon_y = PBL_IF_ROUND_ELSE(32, 12);
     draw_token(ctx, w/2, icon_y, s_players[cp].icon, true);
 
-    int card_y = icon_y + 18;
+    int card_y = icon_y + 20;
     if(s_knocked) {
       #ifdef PBL_COLOR
       graphics_context_set_text_color(ctx, GColorRed);
@@ -609,20 +618,32 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     int casc_n = 3;
     draw_discard_cascade(ctx, col2, row1, cw, ch, casc_n, s_cursor == 1);
 
-    // Knock button below (cursor 2, only if !knocked)
+    // Knock button under player cards (cursor 2, only if !knocked)
     if(!s_knocked) {
-      int knock_y = row1 + ch + 10;
-      if(s_discard_count > 1) knock_y += (casc_n - 1) * 14;
+      int knock_y = row1 + ch + 6;
+      int knock_w = cw * 2 + gap;
+      int knock_x = col0;
+      bool ksel = (s_cursor == 2);
       #ifdef PBL_COLOR
-      graphics_context_set_text_color(ctx, s_cursor == 2 ? GColorYellow : GColorLightGray);
+      graphics_context_set_fill_color(ctx, ksel ? GColorRed : GColorFromHEX(0x440000));
       #else
-      graphics_context_set_text_color(ctx, s_cursor == 2 ? GColorWhite : GColorLightGray);
+      graphics_context_set_fill_color(ctx, ksel ? GColorWhite : GColorDarkGray);
       #endif
-      GFont kf = s_cursor == 2 ? f_md : fonts_get_system_font(FONT_KEY_GOTHIC_18);
-      char kb[16];
-      snprintf(kb, sizeof(kb), "%s Knock", s_cursor == 2 ? ">" : " ");
-      graphics_draw_text(ctx, kb, kf,
-        GRect(0, knock_y, w, 22),
+      graphics_fill_rect(ctx, GRect(knock_x, knock_y, knock_w, 24), 6, GCornersAll);
+      #ifdef PBL_COLOR
+      graphics_context_set_stroke_color(ctx, ksel ? GColorWhite : GColorDarkGray);
+      #else
+      graphics_context_set_stroke_color(ctx, ksel ? GColorBlack : GColorLightGray);
+      #endif
+      graphics_context_set_stroke_width(ctx, 1);
+      graphics_draw_round_rect(ctx, GRect(knock_x, knock_y, knock_w, 24), 6);
+      #ifdef PBL_COLOR
+      graphics_context_set_text_color(ctx, ksel ? GColorWhite : GColorLightGray);
+      #else
+      graphics_context_set_text_color(ctx, ksel ? GColorBlack : GColorWhite);
+      #endif
+      graphics_draw_text(ctx, "KNOCK", f_md,
+        GRect(knock_x, knock_y + 1, knock_w, 22),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
     }
   }
@@ -632,7 +653,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    int icon_y = PBL_IF_ROUND_ELSE(22, 10);
+    int icon_y = PBL_IF_ROUND_ELSE(32, 12);
     draw_token(ctx, w/2, icon_y, s_players[cp].icon, true);
 
     // 2x3 grid: [C0][C1] buf [Drawn] / [C2][C3] buf [Discard cascade]
@@ -752,19 +773,19 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       for(int j = 0; j < HAND_SIZE; j++) {
         draw_mini_card(ctx, mcx + j*22, ly+2, s_players[pi].hand[j], true);
       }
-      // Score
+      // Score above, WIN below
       char sc[12]; snprintf(sc, sizeof(sc), "=%d", scores[pi]);
       #ifdef PBL_COLOR
       graphics_context_set_text_color(ctx, win ? GColorYellow : GColorWhite);
       #else
       graphics_context_set_text_color(ctx, GColorWhite);
       #endif
-      graphics_draw_text(ctx, sc, win ? f_md : f_sm,
-        GRect(mcx + 4*22 + 2, ly + 4, 40, 20),
+      graphics_draw_text(ctx, sc, f_sm,
+        GRect(mcx + 4*22 + 2, ly, 40, 16),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
       if(win) {
-        graphics_draw_text(ctx, "WIN", f_sm,
-          GRect(mcx + 4*22 + 2, ly + 16, 40, 14),
+        graphics_draw_text(ctx, "WIN", f_md,
+          GRect(mcx + 4*22 + 2, ly + 14, 40, 18),
           GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
       }
       ly += rh;
@@ -865,8 +886,8 @@ static void goto_next(void) {
   } else {
     int np = cur_player();
     if(!s_players[np].seen_cards) {
-      // First turn: need blackout then instructions
-      s_state = ST_BLACKOUT;
+      // First turn: go straight to instructions (no blackout)
+      s_state = ST_INSTRUCT;
     } else {
       // Skip blackout, go straight to play
       s_cursor = 0;
