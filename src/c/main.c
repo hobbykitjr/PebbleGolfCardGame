@@ -29,6 +29,7 @@ typedef struct { uint8_t rank; uint8_t suit; } Card;
 typedef struct {
   Card hand[HAND_SIZE];
   bool face_up[HAND_SIZE];
+  bool temp_vis[HAND_SIZE]; // temporarily visible in standings (1 turn)
   bool seen_cards;
   int  icon;
 } Player;
@@ -80,6 +81,10 @@ static bool s_drew_from_discard;
 
 static bool s_knocked;
 static int  s_knocker_idx;
+
+// Temp visibility tracking (discard-sourced replacements visible for 1 turn)
+static bool s_has_temp_vis;
+static int  s_temp_vis_clear_at; // player index that triggers clearing
 
 static bool s_show_standings;
 static bool s_show_history;
@@ -187,6 +192,7 @@ static void deal_hands(void) {
     s_players[i].face_up[1] = false;
     s_players[i].face_up[2] = true;
     s_players[i].face_up[3] = true;
+    for(int j = 0; j < HAND_SIZE; j++) s_players[i].temp_vis[j] = false;
     s_players[i].seen_cards = false;
   }
   push_discard(draw_from_deck());
@@ -815,9 +821,10 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       bool cur = (i == s_cur_idx);
       Player *pl = &s_players[pi];
       draw_token(ctx, op+14, ly+14, pl->icon, false);
-      // 4 mini cards
+      // 4 mini cards (face_up OR temp_vis shows the card)
       for(int j = 0; j < HAND_SIZE; j++)
-        draw_mini_card(ctx, op+28 + j*22, ly, pl->hand[j], pl->face_up[j]);
+        draw_mini_card(ctx, op+28 + j*22, ly, pl->hand[j],
+          pl->face_up[j] || pl->temp_vis[j]);
       // Highlight current player
       if(cur) {
         #ifdef PBL_COLOR
@@ -890,6 +897,13 @@ static void goto_next(void) {
       s_state = ST_INSTRUCT;
     } else {
       // Skip blackout, go straight to play
+      // Clear expired temp visibility
+      if(s_has_temp_vis && s_cur_idx == s_temp_vis_clear_at) {
+        for(int i = 0; i < s_num_players; i++)
+          for(int j = 0; j < HAND_SIZE; j++)
+            s_players[i].temp_vis[j] = false;
+        s_has_temp_vis = false;
+      }
       s_cursor = 0;
       s_log_turn_start[np] = s_log_count;
       s_state = ST_PLAY;
@@ -942,12 +956,15 @@ static void select_click(ClickRecognizerRef ref, void *ctx) {
   else if(s_state == ST_DRAWN) {
     int cp = cur_player();
     if(s_cursor < HAND_SIZE) {
-      // Replace card
+      // Replace card — face_up stays unchanged (face-down stays hidden)
       Card old = s_players[cp].hand[s_cursor];
       s_players[cp].hand[s_cursor] = s_drawn_card;
-      // Face-up only if slot was already face-up OR taken from discard pile
-      s_players[cp].face_up[s_cursor] =
-        s_players[cp].face_up[s_cursor] || s_drew_from_discard;
+      // If slot was face-down and taken from discard, temp-visible for 1 turn
+      if(!s_players[cp].face_up[s_cursor] && s_drew_from_discard) {
+        s_players[cp].temp_vis[s_cursor] = true;
+        s_has_temp_vis = true;
+        s_temp_vis_clear_at = (s_cur_idx + 2) % s_num_players;
+      }
       push_discard(old);
       log_discard(old, cp);
     } else {
