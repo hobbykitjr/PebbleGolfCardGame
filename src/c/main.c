@@ -835,10 +835,11 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       int pi = s_order[i];
       bool cur = (i == s_cur_idx);
       Player *pl = &s_players[pi];
-      draw_token(ctx, op+14, ly+14, pl->icon, false);
+      int sx = PBL_IF_ROUND_ELSE((w - 116) / 2, op + 14);
+      draw_token(ctx, sx, ly+14, pl->icon, false);
       // 4 mini cards (face_up OR temp_vis shows the card)
       for(int j = 0; j < HAND_SIZE; j++)
-        draw_mini_card(ctx, op+28 + j*22, ly, pl->hand[j],
+        draw_mini_card(ctx, sx + 16 + j*22, ly, pl->hand[j],
           pl->face_up[j] || pl->temp_vis[j]);
       // Highlight current player
       if(cur) {
