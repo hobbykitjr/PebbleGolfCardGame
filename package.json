@@ -1,0 +1,49 @@
+{
+    "author": "Hobbykitjr",
+    "dependencies": {},
+    "keywords": [
+        "pebble-app"
+    ],
+    "name": "golf",
+    "pebble": {
+        "displayName": "Golf-Card Game",
+        "enableMultiJS": false,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/menu_icon.png",
+                    "menuIcon": true,
+                    "name": "ICON",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "characterRegex": "[\\uf004\\uf005\\uf0c8\\uf0e7\\uf111\\uf219]",
+                    "file": "fonts/icons_14.ttf",
+                    "name": "ICON_FONT_14",
+                    "targetPlatforms": null,
+                    "type": "font"
+                },
+                {
+                    "characterRegex": "[\\uf004\\uf005\\uf0c8\\uf0e7\\uf111\\uf219]",
+                    "file": "fonts/icons_20.ttf",
+                    "name": "ICON_FONT_20",
+                    "targetPlatforms": null,
+                    "type": "font"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "emery",
+            "gabbro"
+        ],
+        "uuid": "a3f7c2d1-84e5-4b9a-b6f3-1d2e3f4a5b6c",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "1.0.0"
+}
