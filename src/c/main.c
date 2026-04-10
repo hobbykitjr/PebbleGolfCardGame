@@ -470,7 +470,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       graphics_context_set_text_color(ctx, GColorYellow);
       #endif
       graphics_draw_text(ctx, lbuf, f_sm,
-        GRect(0, cy+34, w, 16),
+        GRect(0, cy+58, w, 16),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
       graphics_context_set_text_color(ctx, GColorWhite);
     }
