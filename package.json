@@ -20,14 +20,14 @@
                     "type": "bitmap"
                 },
                 {
-                    "characterRegex": "[\\uf004\\uf005\\uf0c8\\uf0e7\\uf111\\uf219]",
+                    "characterRegex": "[\\uf004\\uf005\\uf0c8\\uf0d8\\uf0d9\\uf0e7\\uf111\\uf219]",
                     "file": "fonts/icons_14.ttf",
                     "name": "ICON_FONT_14",
                     "targetPlatforms": null,
                     "type": "font"
                 },
                 {
-                    "characterRegex": "[\\uf004\\uf005\\uf0c8\\uf0e7\\uf111\\uf219]",
+                    "characterRegex": "[\\uf004\\uf005\\uf0c8\\uf0d8\\uf0d9\\uf0e7\\uf111\\uf219]",
                     "file": "fonts/icons_20.ttf",
                     "name": "ICON_FONT_20",
                     "targetPlatforms": null,

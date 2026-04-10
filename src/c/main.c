@@ -433,6 +433,14 @@ static void canvas_proc(Layer *l, GContext *ctx) {
 
     const char *opts[]={"2 Players","3 Players","4 Players","5 Players","6 Players"};
     int cy = h * 42 / 100;
+
+    // Up arrow above
+    graphics_context_set_text_color(ctx, GColorLightGray);
+    if(s_icon_font_20)
+      graphics_draw_text(ctx, "\xEF\x83\x98", s_icon_font_20,
+        GRect(w/2-15, cy-28, 30, 26),
+        GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+
     #ifdef PBL_COLOR
     graphics_context_set_fill_color(ctx, GColorFromHEX(0x006600));
     #else
@@ -448,6 +456,13 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       GRect(0, cy-2, w, 30),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
+    // Down arrow below
+    graphics_context_set_text_color(ctx, GColorLightGray);
+    if(s_icon_font_20)
+      graphics_draw_text(ctx, "\xEF\x83\x99", s_icon_font_20,
+        GRect(w/2-15, cy+30, 30, 26),
+        GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+
     graphics_context_set_text_color(ctx, GColorWhite);
     if(s_lo_score > 0) {
       char lbuf[24]; snprintf(lbuf, sizeof(lbuf), "Best: %d pts", s_lo_score);
@@ -460,7 +475,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       graphics_context_set_text_color(ctx, GColorWhite);
     }
     graphics_draw_text(ctx, "SELECT to start", f_sm,
-      GRect(0, h*74/100, w, 16),
+      GRect(0, h*78/100, w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
