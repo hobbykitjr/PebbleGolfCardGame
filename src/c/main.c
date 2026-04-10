@@ -940,7 +940,6 @@ static void select_click(ClickRecognizerRef ref, void *ctx) {
     s_state = ST_ORDER;
   }
   else if(s_state == ST_ORDER) {
-    shuffle_order();
     deal_hands();
     s_cur_idx = 0;
     s_rounds = 1;
