@@ -20,13 +20,11 @@
 #define NUM_TOKENS  6
 #define P_LO_SCORE  0
 
-// Game states
 enum {
   ST_SETUP, ST_ORDER, ST_INSTRUCT, ST_REVEAL,
   ST_PLAY, ST_DRAWN, ST_BLACKOUT, ST_GAMEOVER
 };
 
-// Suits
 enum { SUIT_SPADE, SUIT_HEART, SUIT_DIAMOND, SUIT_CLUB };
 
 // ============================================================================
@@ -51,17 +49,12 @@ static const char *s_rank_str[] = {
 };
 static const char s_suit_ch[] = {'S','H','D','C'};
 
-// Player tokens (Font Awesome icons, same as Farkle)
 static const char *s_tok_name[] = {
   "Star","Heart","Diamond","Circle","Square","Bolt"
 };
 static const char *s_tok_char[] = {
-  "\xEF\x80\x85",  // U+F005 Star
-  "\xEF\x80\x84",  // U+F004 Heart
-  "\xEF\x88\x99",  // U+F219 Diamond
-  "\xEF\x84\x91",  // U+F111 Circle
-  "\xEF\x83\x88",  // U+F0C8 Square
-  "\xEF\x83\xA7",  // U+F0E7 Bolt
+  "\xEF\x80\x85","\xEF\x80\x84","\xEF\x88\x99",
+  "\xEF\x84\x91","\xEF\x83\x88","\xEF\x83\xA7",
 };
 
 // ============================================================================
@@ -71,43 +64,34 @@ static Window *s_win;
 static Layer  *s_canvas;
 static GFont   s_icon_font_20, s_icon_font_14;
 
-// State
 static int s_state = ST_SETUP;
 static int s_num_players;
-static int s_setup_cursor = 0;  // 0..4 => 2..6 players
+static int s_setup_cursor = 0;
 static int s_cursor = 0;
 
-// Players
 static Player s_players[MAX_PLAYERS];
 static int    s_order[MAX_PLAYERS];
 static int    s_cur_idx;
 static int    s_rounds;
 
-// Deck
 static Card s_deck[DECK_SIZE];
 static int  s_deck_top, s_deck_count;
 
-// Discard pile
 static Card s_discard[DECK_SIZE];
 static int  s_discard_count;
 
-// Discard log (for history overlay)
 static LogEntry s_log[DECK_SIZE];
 static int  s_log_count;
 static int  s_log_turn_start[MAX_PLAYERS];
 
-// Current drawn card
 static Card s_drawn_card;
 
-// Knock tracking
 static bool s_knocked;
 static int  s_knocker_idx;
 
-// Overlay toggles
 static bool s_show_standings;
 static bool s_show_history;
 
-// Persistence
 static int s_lo_score;
 
 // ============================================================================
@@ -126,10 +110,10 @@ static const char *card_str(Card c) {
 // CARD UTILITIES
 // ============================================================================
 static int card_value(Card c) {
-  if(c.rank == 10) return 0;       // Jack = 0
-  if(c.rank == 0)  return 1;       // Ace = 1
-  if(c.rank <= 9)  return c.rank + 1; // 2-10 = face value
-  return 10;                        // Q, K = 10
+  if(c.rank == 10) return 0;
+  if(c.rank == 0)  return 1;
+  if(c.rank <= 9)  return c.rank + 1;
+  return 10;
 }
 
 static int hand_score(int pi) {
@@ -161,10 +145,8 @@ static void reshuffle_discard(void) {
   int n = s_discard_count - 1;
   for(int i = 0; i < n; i++) s_deck[i] = s_discard[i];
   shuffle_cards(s_deck, n);
-  s_deck_top = 0;
-  s_deck_count = n;
-  s_discard[0] = top;
-  s_discard_count = 1;
+  s_deck_top = 0; s_deck_count = n;
+  s_discard[0] = top; s_discard_count = 1;
 }
 
 static Card draw_from_deck(void) {
@@ -224,9 +206,7 @@ static void deal_hands(void) {
     s_players[i].face_up[3] = true;
     s_players[i].seen_cards = false;
   }
-  // Initial discard
   push_discard(draw_from_deck());
-  // Set log start for all players after initial discard
   for(int i = 0; i < s_num_players; i++)
     s_log_turn_start[i] = s_log_count;
 }
@@ -279,10 +259,48 @@ static void draw_token(GContext *ctx, int cx, int cy, int icon, bool lg) {
     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 }
 
+// Draw a suit icon as a small pixel-art shape
+static void draw_suit_icon(GContext *ctx, int cx, int cy, int suit) {
+  #ifdef PBL_COLOR
+  graphics_context_set_fill_color(ctx, suit_gcolor(suit));
+  #else
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  #endif
+  switch(suit) {
+    case SUIT_HEART:
+      graphics_fill_circle(ctx, GPoint(cx - 2, cy - 1), 2);
+      graphics_fill_circle(ctx, GPoint(cx + 2, cy - 1), 2);
+      for(int i = 0; i < 4; i++) {
+        int hw = 3 - i;
+        if(hw >= 0)
+          graphics_fill_rect(ctx, GRect(cx-hw, cy+i, hw*2+1, 1), 0, GCornerNone);
+      }
+      break;
+    case SUIT_DIAMOND:
+      for(int i = -3; i <= 3; i++) {
+        int hw = 3 - (i < 0 ? -i : i);
+        graphics_fill_rect(ctx, GRect(cx-hw, cy+i, hw*2+1, 1), 0, GCornerNone);
+      }
+      break;
+    case SUIT_SPADE:
+      for(int i = 0; i < 4; i++)
+        graphics_fill_rect(ctx, GRect(cx-i, cy-3+i, i*2+1, 1), 0, GCornerNone);
+      graphics_fill_circle(ctx, GPoint(cx - 2, cy + 2), 2);
+      graphics_fill_circle(ctx, GPoint(cx + 2, cy + 2), 2);
+      graphics_fill_rect(ctx, GRect(cx, cy + 3, 1, 2), 0, GCornerNone);
+      break;
+    case SUIT_CLUB:
+      graphics_fill_circle(ctx, GPoint(cx, cy - 2), 2);
+      graphics_fill_circle(ctx, GPoint(cx - 3, cy + 1), 2);
+      graphics_fill_circle(ctx, GPoint(cx + 3, cy + 1), 2);
+      graphics_fill_rect(ctx, GRect(cx, cy + 2, 1, 3), 0, GCornerNone);
+      break;
+  }
+}
+
 static void draw_card_gfx(GContext *ctx, int x, int y, int cw, int ch,
                            Card card, bool face, bool hl) {
   if(face) {
-    // White card face
     graphics_context_set_fill_color(ctx, GColorWhite);
     graphics_fill_rect(ctx, GRect(x, y, cw, ch), 3, GCornersAll);
     #ifdef PBL_COLOR
@@ -293,7 +311,7 @@ static void draw_card_gfx(GContext *ctx, int x, int y, int cw, int ch,
     graphics_context_set_stroke_width(ctx, hl ? 2 : 1);
     graphics_draw_round_rect(ctx, GRect(x, y, cw, ch), 3);
 
-    // Rank
+    // Rank text
     #ifdef PBL_COLOR
     graphics_context_set_text_color(ctx, suit_gcolor(card.suit));
     #else
@@ -304,14 +322,9 @@ static void draw_card_gfx(GContext *ctx, int x, int y, int cw, int ch,
       GRect(x + 1, y - 2, cw - 2, ch / 2 + 4),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-    // Suit letter
-    char sb[2] = {s_suit_ch[card.suit], 0};
-    graphics_draw_text(ctx, sb,
-      fonts_get_system_font(FONT_KEY_GOTHIC_14),
-      GRect(x + 1, y + ch / 2 - 5, cw - 2, ch / 2 + 2),
-      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    // Suit icon
+    draw_suit_icon(ctx, x + cw / 2, y + ch * 3 / 4, card.suit);
   } else {
-    // Card back
     #ifdef PBL_COLOR
     graphics_context_set_fill_color(ctx, GColorCobaltBlue);
     #else
@@ -334,7 +347,6 @@ static void draw_card_gfx(GContext *ctx, int x, int y, int cw, int ch,
   }
 }
 
-// Draw stacked card backs (draw pile)
 static void draw_pile_gfx(GContext *ctx, int x, int y, int cw, int ch,
                            int count, bool hl) {
   if(count <= 0) return;
@@ -365,41 +377,8 @@ static void draw_pile_gfx(GContext *ctx, int x, int y, int cw, int ch,
     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 }
 
-// Draw the player header (icon + name + round)
-static void draw_header(GContext *ctx, int w, int pad, int cp) {
-  Player *p = &s_players[cp];
-  draw_token(ctx, pad + 12, 14, p->icon, false);
-  graphics_context_set_text_color(ctx, GColorWhite);
-  char hdr[20];
-  snprintf(hdr, sizeof(hdr), "Player %d", cp + 1);
-  graphics_draw_text(ctx, hdr,
-    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-    GRect(pad + 26, 1, w / 2, 24),
-    GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  char rnd[10];
-  snprintf(rnd, sizeof(rnd), "Rd %d", s_rounds);
-  graphics_draw_text(ctx, rnd,
-    fonts_get_system_font(FONT_KEY_GOTHIC_14),
-    GRect(w - pad - 48, 5, 48, 18),
-    GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
-}
-
-// Draw the 2x2 hand grid; returns card_y for layout
-static int draw_hand_grid(GContext *ctx, int pad, int card_y,
-                          int cw, int ch, int gap, Player *p,
-                          int hl_idx) {
-  for(int i = 0; i < HAND_SIZE; i++) {
-    int col = i % 2, row = i / 2;
-    int cx = pad + 6 + col * (cw + gap);
-    int cy = card_y + row * (ch + gap);
-    draw_card_gfx(ctx, cx, cy, cw, ch,
-      p->hand[i], p->face_up[i], i == hl_idx);
-  }
-  return card_y + 2 * (ch + gap);
-}
-
 // Draw a menu item
-static void draw_menu_item(GContext *ctx, int x, int y, int w,
+static void draw_menu_item(GContext *ctx, int x, int y, int mw,
                            const char *text, bool selected) {
   GFont f = selected
     ? fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD)
@@ -412,7 +391,7 @@ static void draw_menu_item(GContext *ctx, int x, int y, int w,
   char buf[40];
   snprintf(buf, sizeof(buf), "%s %s", selected ? ">" : " ", text);
   graphics_draw_text(ctx, buf, f,
-    GRect(x, y, w, 22),
+    GRect(x, y, mw, 22),
     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
@@ -424,7 +403,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
   int w = b.size.w, h = b.size.h;
   int pad = PBL_IF_ROUND_ELSE(18, 4);
 
-  // Background — dark green felt
+  // Background
   #ifdef PBL_COLOR
   graphics_context_set_fill_color(ctx, GColorFromHEX(0x004400));
   #else
@@ -444,15 +423,12 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     graphics_draw_text(ctx, "GOLF", f_lg,
       GRect(0, h * 8 / 100, w, 34),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-
     graphics_draw_text(ctx, "Card Game", f_sm,
       GRect(0, h * 8 / 100 + 30, w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-    // Player count picker
     const char *opts[] = {"2 Players","3 Players","4 Players","5 Players","6 Players"};
     int cy = h * 42 / 100;
-
     #ifdef PBL_COLOR
     graphics_context_set_fill_color(ctx, GColorFromHEX(0x006600));
     #else
@@ -469,7 +445,6 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       GRect(0, cy - 2, w, 30),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-    // Low score display
     graphics_context_set_text_color(ctx, GColorWhite);
     if(s_lo_score > 0) {
       char lbuf[24];
@@ -482,7 +457,6 @@ static void canvas_proc(Layer *l, GContext *ctx) {
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
       graphics_context_set_text_color(ctx, GColorWhite);
     }
-
     graphics_draw_text(ctx, "SELECT to start", f_sm,
       GRect(0, h * 74 / 100, w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
@@ -491,7 +465,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
-  // ======== ORDER (token assignment) ========
+  // ======== ORDER ========
   else if(s_state == ST_ORDER) {
     graphics_context_set_text_color(ctx, GColorWhite);
     graphics_draw_text(ctx, "Player Order", f_md,
@@ -508,7 +482,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       int col_w = w / cols;
       int tx = c * col_w + (cols == 1 ? w / 2 - 30 : col_w / 2 - 20);
       int ty = gy + r * row_h;
-      char lbl[24];
+      char lbl[8];
       snprintf(lbl, sizeof(lbl), "%d.", i + 1);
       graphics_context_set_text_color(ctx, GColorWhite);
       graphics_draw_text(ctx, lbl, f_sm,
@@ -520,35 +494,36 @@ static void canvas_proc(Layer *l, GContext *ctx) {
         GRect(tx + 28, ty + 4, col_w / 2 + 20, 18),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
     }
-
     graphics_context_set_text_color(ctx, GColorWhite);
     graphics_draw_text(ctx, "SELECT to shuffle & deal", f_sm,
       GRect(0, h * 80 / 100, w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
-  // ======== INSTRUCT (rules overlay per player first turn) ========
+  // ======== INSTRUCT ========
   else if(s_state == ST_INSTRUCT) {
     int cp = cur_player();
-    // Dark overlay
     graphics_context_set_fill_color(ctx, GColorBlack);
     graphics_fill_rect(ctx, GRect(pad, pad, w - pad * 2, h - pad * 2), 8, GCornersAll);
 
     int ly = pad + 6;
-    // Player icon + name
-    draw_token(ctx, w / 2, ly + 10, s_players[cp].icon, true);
-    ly += 26;
+    draw_token(ctx, w / 2, ly + 12, s_players[cp].icon, true);
+    ly += 28;
+    // Token name instead of "Player N"
+    #ifdef PBL_COLOR
+    graphics_context_set_text_color(ctx, tok_color(s_players[cp].icon));
+    #else
     graphics_context_set_text_color(ctx, GColorWhite);
-    char pn[20];
-    snprintf(pn, sizeof(pn), "PLAYER %d", cp + 1);
-    graphics_draw_text(ctx, pn, f_md,
+    #endif
+    graphics_draw_text(ctx, s_tok_name[s_players[cp].icon], f_md,
       GRect(pad, ly, w - pad * 2, 22),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
     ly += 24;
 
-    // Rules text
     #ifdef PBL_COLOR
     graphics_context_set_text_color(ctx, GColorYellow);
+    #else
+    graphics_context_set_text_color(ctx, GColorWhite);
     #endif
     const char *rules[] = {
       "Memorize your top 2!",
@@ -566,42 +541,41 @@ static void canvas_proc(Layer *l, GContext *ctx) {
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
       ly += (rules[i][0] == 0) ? 6 : 16;
     }
-
     graphics_context_set_text_color(ctx, GColorWhite);
     graphics_draw_text(ctx, "SELECT to see cards", f_sm,
       GRect(pad, h - pad - 20, w - pad * 2, 18),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
-  // ======== REVEAL (show all 4 cards for memorization) ========
+  // ======== REVEAL ========
   else if(s_state == ST_REVEAL) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    draw_header(ctx, w, pad, cp);
+    // Centered icon header
+    int icon_y = PBL_IF_ROUND_ELSE(22, 10);
+    draw_token(ctx, w / 2, icon_y, s_players[cp].icon, true);
 
     #ifdef PBL_COLOR
     graphics_context_set_text_color(ctx, GColorYellow);
     #else
     graphics_context_set_text_color(ctx, GColorWhite);
     #endif
+    int label_y = icon_y + 16;
     graphics_draw_text(ctx, "MEMORIZE YOUR CARDS!", f_sm,
-      GRect(0, 24, w, 16),
+      GRect(0, label_y, w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-    // Draw all 4 cards face up (temporary reveal)
-    int card_y = 44;
+    int card_y = label_y + 20;
     int grid_w = cw * 2 + gap;
     int gx = (w - grid_w) / 2;
     for(int i = 0; i < HAND_SIZE; i++) {
       int col = i % 2, row = i / 2;
       int cx = gx + col * (cw + gap);
       int cy = card_y + row * (ch + gap);
-      draw_card_gfx(ctx, cx, cy, cw, ch, p->hand[i], true,
-        row == 0); // highlight top 2 (the ones that will hide)
+      draw_card_gfx(ctx, cx, cy, cw, ch, p->hand[i], true, row == 0);
     }
 
-    // Labels
     graphics_context_set_text_color(ctx, GColorWhite);
     int below = card_y + 2 * (ch + gap) + 4;
     graphics_draw_text(ctx, "Top 2 will be hidden!", f_sm,
@@ -612,15 +586,17 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
-  // ======== PLAY (main game turn) ========
+  // ======== PLAY ========
   else if(s_state == ST_PLAY) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    draw_header(ctx, w, pad, cp);
+    // Centered icon header
+    int icon_y = PBL_IF_ROUND_ELSE(20, 10);
+    draw_token(ctx, w / 2, icon_y, s_players[cp].icon, true);
 
-    // Knocked warning
-    int card_y = 26;
+    // Knocked warning under icon
+    int card_y = icon_y + 18;
     if(s_knocked) {
       #ifdef PBL_COLOR
       graphics_context_set_text_color(ctx, GColorRed);
@@ -628,116 +604,142 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       graphics_context_set_text_color(ctx, GColorWhite);
       #endif
       graphics_draw_text(ctx, "LAST TURN!", f_sm,
-        GRect(0, 24, w, 16),
+        GRect(0, card_y, w, 16),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-      card_y = 40;
+      card_y += 16;
     }
 
-    // Player's hand
-    draw_hand_grid(ctx, pad, card_y, cw, ch, gap, p, -1);
+    // Centered card grid: [C0][C1] gap [Pile] / [C2][C3] gap [Disc]
+    int buf_gap = 14;
+    int total_w = cw * 3 + gap + buf_gap;
+    int gx = (w - total_w) / 2;
+    int col0 = gx;
+    int col1 = gx + cw + gap;
+    int col2 = gx + cw * 2 + gap + buf_gap;
+    int row0 = card_y;
+    int row1 = card_y + ch + gap;
 
-    // Draw pile + discard on right side
-    int pile_x = pad + 6 + 2 * (cw + gap) + 16;
-    draw_pile_gfx(ctx, pile_x, card_y, cw, ch,
-      deck_remaining(), s_cursor == 0);
+    // Player's 4 cards
+    int hand_pos[][2] = {{col0,row0},{col1,row0},{col0,row1},{col1,row1}};
+    for(int i = 0; i < HAND_SIZE; i++)
+      draw_card_gfx(ctx, hand_pos[i][0], hand_pos[i][1], cw, ch,
+        p->hand[i], p->face_up[i], false);
 
-    if(s_discard_count > 0) {
-      draw_card_gfx(ctx, pile_x, card_y + ch + gap, cw, ch,
-        peek_discard(), true, s_cursor == 1);
-    }
+    // Draw pile + discard
+    draw_pile_gfx(ctx, col2, row0, cw, ch, deck_remaining(), s_cursor == 0);
+    if(s_discard_count > 0)
+      draw_card_gfx(ctx, col2, row1, cw, ch, peek_discard(), true, s_cursor == 1);
 
-    // Recent discards hint (show last 2-3 under discard)
+    // Recent discards hint
     if(s_discard_count > 1) {
       graphics_context_set_text_color(ctx, GColorLightGray);
-      int disc_y = card_y + 2 * (ch + gap) + 2;
+      int disc_y = row1 + ch + 2;
       int show = s_discard_count - 1;
-      if(show > 3) show = 3;
+      if(show > 2) show = 2;
       for(int i = 0; i < show; i++) {
         int idx = s_discard_count - 2 - i;
         if(idx < 0) break;
         graphics_draw_text(ctx, card_str(s_discard[idx]), f_sm,
-          GRect(pile_x, disc_y + i * 14, cw, 14),
+          GRect(col2, disc_y + i * 14, cw, 14),
           GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
       }
     }
 
-    // Menu
-    int menu_y = card_y + 2 * (ch + gap) + 8;
-    char draw_str[24], disc_str[24];
-    snprintf(draw_str, sizeof(draw_str), "Draw (%d left)", deck_remaining());
+    // Menu below cards
+    int menu_y = row1 + ch + 8;
+    char draw_str[20], disc_str[20];
+    snprintf(draw_str, sizeof(draw_str), "Draw (%d)", deck_remaining());
     snprintf(disc_str, sizeof(disc_str), "Take %s", card_str(peek_discard()));
 
-    draw_menu_item(ctx, pad + 2, menu_y, w - pad * 2, draw_str, s_cursor == 0);
-    draw_menu_item(ctx, pad + 2, menu_y + 22, w - pad * 2, disc_str, s_cursor == 1);
-    if(!s_knocked) {
-      draw_menu_item(ctx, pad + 2, menu_y + 44, w - pad * 2, "Knock", s_cursor == 2);
-    }
+    int menu_x = PBL_IF_ROUND_ELSE(pad + 20, pad + 4);
+    int menu_w = w - menu_x * 2;
+    draw_menu_item(ctx, menu_x, menu_y, menu_w, draw_str, s_cursor == 0);
+    draw_menu_item(ctx, menu_x, menu_y + 22, menu_w, disc_str, s_cursor == 1);
+    if(!s_knocked)
+      draw_menu_item(ctx, menu_x, menu_y + 44, menu_w, "Knock", s_cursor == 2);
 
-    // Hints
+    // Hint
     graphics_context_set_text_color(ctx, GColorLightGray);
-    graphics_draw_text(ctx, "Hold UP:standings  DOWN:history", f_sm,
-      GRect(0, h - 16, w, 14),
+    graphics_draw_text(ctx, "Hold: UP standings  DOWN history", f_sm,
+      GRect(0, h - PBL_IF_ROUND_ELSE(22, 16), w, 14),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
-  // ======== DRAWN (after drawing, choose replacement) ========
+  // ======== DRAWN (visual card grid, no text) ========
   else if(s_state == ST_DRAWN) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    // Header with drawn card info
-    draw_token(ctx, pad + 12, 14, p->icon, false);
-    graphics_context_set_text_color(ctx, GColorWhite);
-    char dstr[20];
-    snprintf(dstr, sizeof(dstr), "Drew: %s", card_str(s_drawn_card));
-    graphics_draw_text(ctx, dstr, f_md,
-      GRect(pad + 26, 1, w - pad - 30, 24),
-      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    // Centered icon
+    int icon_y = PBL_IF_ROUND_ELSE(22, 10);
+    draw_token(ctx, w / 2, icon_y, s_players[cp].icon, true);
 
-    // Drawn card preview (small, top-right)
-    draw_card_gfx(ctx, w - pad - cw - 4, 0, cw - 4, ch - 8,
-      s_drawn_card, true, false);
+    // 2x3 card grid: [C0][C1] buf [Drawn] / [C2][C3] buf [Discard]
+    int buf_gap = 14;
+    int total_w = cw * 3 + gap + buf_gap;
+    int gx = (w - total_w) / 2;
+    int col0 = gx;
+    int col1 = gx + cw + gap;
+    int col2 = gx + cw * 2 + gap + buf_gap;
+    int card_y = icon_y + 20;
+    int row0 = card_y;
+    int row1 = card_y + ch + gap;
 
-    // Player's hand with highlight on cursor
-    int card_y = 28;
-    draw_hand_grid(ctx, pad, card_y, cw, ch, gap, p,
-      s_cursor < HAND_SIZE ? s_cursor : -1);
+    // Player's 4 cards (cursor highlights selection)
+    int hand_pos[][2] = {{col0,row0},{col1,row0},{col0,row1},{col1,row1}};
+    for(int i = 0; i < HAND_SIZE; i++)
+      draw_card_gfx(ctx, hand_pos[i][0], hand_pos[i][1], cw, ch,
+        p->hand[i], p->face_up[i], s_cursor == i);
 
-    // Value label for card scoring
+    // Drawn card (top-right, always shown with green/cyan highlight)
+    draw_card_gfx(ctx, col2, row0, cw, ch, s_drawn_card, true, false);
+    // Green border to mark it as "the new card"
+    #ifdef PBL_COLOR
+    graphics_context_set_stroke_color(ctx, GColorGreen);
+    #else
+    graphics_context_set_stroke_color(ctx, GColorWhite);
+    #endif
+    graphics_context_set_stroke_width(ctx, 2);
+    graphics_draw_round_rect(ctx, GRect(col2, row0, cw, ch), 3);
+
+    // Discard option (bottom-right, selectable)
+    if(s_discard_count > 0)
+      draw_card_gfx(ctx, col2, row1, cw, ch, peek_discard(), true,
+        s_cursor == HAND_SIZE);
+    else {
+      // Empty discard pile placeholder
+      #ifdef PBL_COLOR
+      graphics_context_set_stroke_color(ctx,
+        s_cursor == HAND_SIZE ? GColorYellow : GColorDarkGray);
+      #else
+      graphics_context_set_stroke_color(ctx,
+        s_cursor == HAND_SIZE ? GColorWhite : GColorDarkGray);
+      #endif
+      graphics_context_set_stroke_width(ctx, s_cursor == HAND_SIZE ? 2 : 1);
+      graphics_draw_round_rect(ctx, GRect(col2, row1, cw, ch), 3);
+    }
+    // "X" on discard option to show it means discard
+    graphics_context_set_text_color(ctx, GColorLightGray);
+    graphics_draw_text(ctx, "X", f_sm,
+      GRect(col2 + cw - 10, row1, 10, 14),
+      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+
+    // Small value hint below grid
     #ifdef PBL_COLOR
     graphics_context_set_text_color(ctx, GColorYellow);
     #else
     graphics_context_set_text_color(ctx, GColorWhite);
     #endif
-    char val_str[24];
-    snprintf(val_str, sizeof(val_str), "Drew %s (val: %d)",
+    char val_hint[16];
+    snprintf(val_hint, sizeof(val_hint), "%s = %d",
       card_str(s_drawn_card), card_value(s_drawn_card));
-    int info_y = card_y + 2 * (ch + gap) + 2;
-    graphics_draw_text(ctx, val_str, f_sm,
-      GRect(pad, info_y, w - pad * 2, 16),
+    int hint_y = row1 + ch + 4;
+    graphics_draw_text(ctx, val_hint, f_sm,
+      GRect(0, hint_y, w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-
-    // Replacement menu
-    int menu_y = info_y + 20;
-    const char *pos_names[] = {"Top-L", "Top-R", "Bot-L", "Bot-R"};
-    for(int i = 0; i < HAND_SIZE; i++) {
-      char item[32];
-      if(p->face_up[i])
-        snprintf(item, sizeof(item), "%s (%s)", pos_names[i],
-          card_str(p->hand[i]));
-      else
-        snprintf(item, sizeof(item), "%s (" "??" ")", pos_names[i]);
-      draw_menu_item(ctx, pad + 2, menu_y + i * 20, w - pad * 2,
-        item, s_cursor == i);
-    }
-    char disc_item[24];
-    snprintf(disc_item, sizeof(disc_item), "Discard %s",
-      card_str(s_drawn_card));
-    draw_menu_item(ctx, pad + 2, menu_y + HAND_SIZE * 20, w - pad * 2,
-      disc_item, s_cursor == HAND_SIZE);
   }
 
-  // ======== BLACKOUT (pass to next player) ========
+  // ======== BLACKOUT ========
   else if(s_state == ST_BLACKOUT) {
     int cp = cur_player();
     graphics_context_set_fill_color(ctx, GColorBlack);
@@ -751,18 +753,19 @@ static void canvas_proc(Layer *l, GContext *ctx) {
 
     draw_token(ctx, w / 2, cy + 36, s_players[cp].icon, true);
 
-    char pn[20];
-    snprintf(pn, sizeof(pn), "PLAYER %d", cp + 1);
+    // Token name instead of "Player N"
     #ifdef PBL_COLOR
     graphics_context_set_text_color(ctx, tok_color(s_players[cp].icon));
+    #else
+    graphics_context_set_text_color(ctx, GColorWhite);
     #endif
-    graphics_draw_text(ctx, pn, f_lg,
+    graphics_draw_text(ctx, s_tok_name[s_players[cp].icon], f_lg,
       GRect(0, cy + 50, w, 32),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
     graphics_context_set_text_color(ctx, GColorWhite);
     graphics_draw_text(ctx, "SELECT when ready", f_sm,
-      GRect(0, h - 30, w, 16),
+      GRect(0, h - PBL_IF_ROUND_ELSE(34, 24), w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
@@ -773,11 +776,11 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     #else
     graphics_context_set_text_color(ctx, GColorWhite);
     #endif
+    int title_y = PBL_IF_ROUND_ELSE(pad + 10, pad);
     graphics_draw_text(ctx, "GAME OVER!", f_lg,
-      GRect(0, pad, w, 32),
+      GRect(0, title_y, w, 32),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-    // Calculate scores and find winner
     int scores[MAX_PLAYERS];
     int lo = 999;
     for(int i = 0; i < s_num_players; i++) {
@@ -785,18 +788,15 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       if(scores[i] < lo) lo = scores[i];
     }
 
-    // Display each player
-    int ly = pad + 34;
+    int ly = title_y + 34;
     int row_h = (s_num_players <= 4) ? 28 : 22;
     GFont rf = (s_num_players <= 4) ? f_md : f_sm;
-    GFont rf_b = (s_num_players <= 4) ? f_md : f_sm;
 
     for(int i = 0; i < s_num_players; i++) {
       int pi = s_order[i];
       bool winner = (scores[pi] == lo);
       draw_token(ctx, pad + 12, ly + row_h / 2, s_players[pi].icon, false);
 
-      // Cards as compact text
       char cards[24];
       snprintf(cards, sizeof(cards), "%s %s %s %s",
         card_str(s_players[pi].hand[0]),
@@ -804,28 +804,26 @@ static void canvas_proc(Layer *l, GContext *ctx) {
         card_str(s_players[pi].hand[2]),
         card_str(s_players[pi].hand[3]));
 
-      char line[48];
+      char line[40];
       if(winner)
-        snprintf(line, sizeof(line), "P%d: %s =%d WIN", pi + 1, cards, scores[pi]);
+        snprintf(line, sizeof(line), "%s =%d WIN", cards, scores[pi]);
       else
-        snprintf(line, sizeof(line), "P%d: %s =%d", pi + 1, cards, scores[pi]);
+        snprintf(line, sizeof(line), "%s =%d", cards, scores[pi]);
 
       #ifdef PBL_COLOR
-      graphics_context_set_text_color(ctx,
-        winner ? GColorYellow : GColorWhite);
+      graphics_context_set_text_color(ctx, winner ? GColorYellow : GColorWhite);
       #else
       graphics_context_set_text_color(ctx, GColorWhite);
       #endif
-      graphics_draw_text(ctx, line, winner ? rf_b : rf,
-        GRect(pad + 24, ly + 2, w - pad * 2 - 28, row_h),
+      graphics_draw_text(ctx, line, winner ? rf : f_sm,
+        GRect(pad + 26, ly + 2, w - pad * 2 - 30, row_h),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-
       ly += row_h;
     }
 
     graphics_context_set_text_color(ctx, GColorWhite);
     graphics_draw_text(ctx, "SELECT: new game", f_sm,
-      GRect(0, h - 18, w, 16),
+      GRect(0, h - PBL_IF_ROUND_ELSE(26, 18), w, 16),
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   }
 
@@ -847,21 +845,19 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     for(int i = 0; i < s_num_players; i++) {
       int pi = s_order[i];
       bool cur = (i == s_cur_idx);
-      Player *p = &s_players[pi];
-      draw_token(ctx, op + 14, ly + 10, p->icon, false);
+      Player *pl = &s_players[pi];
+      draw_token(ctx, op + 14, ly + 10, pl->icon, false);
 
-      // Show visible cards
       char vis[20] = "";
       for(int j = 0; j < HAND_SIZE; j++) {
-        if(p->face_up[j]) {
+        if(pl->face_up[j]) {
           char tmp[6];
-          snprintf(tmp, sizeof(tmp), "%s ", card_str(p->hand[j]));
+          snprintf(tmp, sizeof(tmp), "%s ", card_str(pl->hand[j]));
           strncat(vis, tmp, sizeof(vis) - strlen(vis) - 1);
         } else {
           strncat(vis, "__ ", sizeof(vis) - strlen(vis) - 1);
         }
       }
-
       #ifdef PBL_COLOR
       graphics_context_set_text_color(ctx, cur ? GColorYellow : GColorWhite);
       #endif
@@ -889,28 +885,19 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
     ly += 26;
 
-    int cp = cur_player();
-    int start = s_log_turn_start[cp];
+    int start = s_log_turn_start[cur_player()];
     int shown = 0;
     for(int i = start; i < s_log_count && shown < 8; i++) {
       LogEntry *e = &s_log[i];
-      char line[32];
-      if(e->player >= 0)
-        snprintf(line, sizeof(line), "P%d: %s", e->player + 1,
-          card_str(e->card));
-      else
-        snprintf(line, sizeof(line), "Dealt: %s", card_str(e->card));
-
       graphics_context_set_text_color(ctx, GColorWhite);
       if(e->player >= 0)
         draw_token(ctx, op + 12, ly + 8, s_players[e->player].icon, false);
-      graphics_draw_text(ctx, line, f_sm,
-        GRect(op + 24, ly, w - op * 2 - 28, 18),
+      graphics_draw_text(ctx, card_str(e->card), f_sm,
+        GRect(op + 26, ly, w - op * 2 - 30, 18),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
       ly += 18;
       shown++;
     }
-
     if(shown == 0) {
       graphics_context_set_text_color(ctx, GColorLightGray);
       graphics_draw_text(ctx, "Nothing yet!", f_sm,
@@ -925,14 +912,10 @@ static void canvas_proc(Layer *l, GContext *ctx) {
 // ============================================================================
 static void goto_next(void) {
   int cp = cur_player();
-  // Mark this player's log position
   s_log_turn_start[cp] = s_log_count;
-  // Advance
   next_player();
   if(s_knocked && s_cur_idx == s_knocker_idx) {
-    // Everyone else has had their last turn
     s_state = ST_GAMEOVER;
-    // Save low score
     int lo = 999;
     for(int i = 0; i < s_num_players; i++) {
       int sc = hand_score(i);
@@ -974,17 +957,14 @@ static void select_click(ClickRecognizerRef ref, void *ctx) {
   }
   else if(s_state == ST_PLAY) {
     if(s_cursor == 0) {
-      // Draw from pile
       s_drawn_card = draw_from_deck();
       s_cursor = 0;
       s_state = ST_DRAWN;
     } else if(s_cursor == 1) {
-      // Take from discard
       s_drawn_card = pop_discard();
       s_cursor = 0;
       s_state = ST_DRAWN;
     } else if(s_cursor == 2 && !s_knocked) {
-      // Knock
       s_knocked = true;
       s_knocker_idx = s_cur_idx;
       vibes_short_pulse();
@@ -994,14 +974,12 @@ static void select_click(ClickRecognizerRef ref, void *ctx) {
   else if(s_state == ST_DRAWN) {
     int cp = cur_player();
     if(s_cursor < HAND_SIZE) {
-      // Replace card
       Card old = s_players[cp].hand[s_cursor];
       s_players[cp].hand[s_cursor] = s_drawn_card;
       s_players[cp].face_up[s_cursor] = true;
       push_discard(old);
       log_discard(old, cp);
     } else {
-      // Discard drawn card
       push_discard(s_drawn_card);
       log_discard(s_drawn_card, cp);
     }
@@ -1052,14 +1030,12 @@ static void back_click(ClickRecognizerRef ref, void *ctx) {
   if(s_state == ST_SETUP || s_state == ST_GAMEOVER) {
     window_stack_pop(true);
   } else {
-    // Back to setup (abandon game)
     s_state = ST_SETUP;
     s_setup_cursor = 0;
     if(s_canvas) layer_mark_dirty(s_canvas);
   }
 }
 
-// Hold UP = standings overlay
 static void up_long_down(ClickRecognizerRef ref, void *ctx) {
   s_show_standings = true;
   if(s_canvas) layer_mark_dirty(s_canvas);
@@ -1068,8 +1044,6 @@ static void up_long_up(ClickRecognizerRef ref, void *ctx) {
   s_show_standings = false;
   if(s_canvas) layer_mark_dirty(s_canvas);
 }
-
-// Hold DOWN = history overlay
 static void down_long_down(ClickRecognizerRef ref, void *ctx) {
   s_show_history = true;
   if(s_canvas) layer_mark_dirty(s_canvas);
