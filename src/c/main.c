@@ -357,7 +357,7 @@ static void draw_pile_gfx(GContext *ctx, int x, int y, int cw, int ch,
   graphics_draw_round_rect(ctx, GRect(x, y, cw, ch), 3);
 
   graphics_context_set_text_color(ctx, GColorWhite);
-  char buf[4];
+  char buf[8];
   snprintf(buf, sizeof(buf), "%d", count);
   graphics_draw_text(ctx, buf,
     fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
@@ -726,7 +726,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
         snprintf(item, sizeof(item), "%s (%s)", pos_names[i],
           card_str(p->hand[i]));
       else
-        snprintf(item, sizeof(item), "%s (??)", pos_names[i]);
+        snprintf(item, sizeof(item), "%s (" "??" ")", pos_names[i]);
       draw_menu_item(ctx, pad + 2, menu_y + i * 20, w - pad * 2,
         item, s_cursor == i);
     }
