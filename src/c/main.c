@@ -459,7 +459,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     // Down arrow below
     graphics_context_set_text_color(ctx, GColorLightGray);
     if(s_icon_font_20)
-      graphics_draw_text(ctx, "\xEF\x83\x99", s_icon_font_20,
+      graphics_draw_text(ctx, "\xEF\x83\x97", s_icon_font_20,
         GRect(w/2-15, cy+30, 30, 26),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
