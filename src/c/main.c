@@ -779,21 +779,20 @@ static void canvas_proc(Layer *l, GContext *ctx) {
       for(int j = 0; j < HAND_SIZE; j++) {
         draw_mini_card(ctx, mcx + j*22, ly+2, s_players[pi].hand[j], true);
       }
-      // Score above, WIN below
-      char sc[12]; snprintf(sc, sizeof(sc), "=%d", scores[pi]);
+      // Score with WIN inline
+      char sc[16];
+      if(win)
+        snprintf(sc, sizeof(sc), "=%d WIN", scores[pi]);
+      else
+        snprintf(sc, sizeof(sc), "=%d", scores[pi]);
       #ifdef PBL_COLOR
       graphics_context_set_text_color(ctx, win ? GColorYellow : GColorWhite);
       #else
       graphics_context_set_text_color(ctx, GColorWhite);
       #endif
       graphics_draw_text(ctx, sc, f_sm,
-        GRect(mcx + 4*22 + 2, ly, 40, 16),
+        GRect(mcx + 4*22 + 2, ly + 6, 50, 20),
         GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-      if(win) {
-        graphics_draw_text(ctx, "WIN", f_md,
-          GRect(mcx + 4*22 + 2, ly + 14, 40, 18),
-          GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-      }
       ly += rh;
     }
     graphics_context_set_text_color(ctx, GColorWhite);
