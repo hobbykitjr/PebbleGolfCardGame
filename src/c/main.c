@@ -551,7 +551,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
   else if(s_state == ST_REVEAL) {
     int cp = cur_player();
     Player *p = &s_players[cp];
-    int icon_y = PBL_IF_ROUND_ELSE(32, 12);
+    int icon_y = PBL_IF_ROUND_ELSE(32, 18);
     draw_token(ctx, w/2, icon_y, s_players[cp].icon, true);
 
     #ifdef PBL_COLOR
@@ -587,7 +587,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    int icon_y = PBL_IF_ROUND_ELSE(32, 12);
+    int icon_y = PBL_IF_ROUND_ELSE(32, 18);
     draw_token(ctx, w/2, icon_y, s_players[cp].icon, true);
 
     int card_y = icon_y + 20;
@@ -659,7 +659,7 @@ static void canvas_proc(Layer *l, GContext *ctx) {
     int cp = cur_player();
     Player *p = &s_players[cp];
 
-    int icon_y = PBL_IF_ROUND_ELSE(32, 12);
+    int icon_y = PBL_IF_ROUND_ELSE(32, 18);
     draw_token(ctx, w/2, icon_y, s_players[cp].icon, true);
 
     // 2x3 grid: [C0][C1] buf [Drawn] / [C2][C3] buf [Discard cascade]
